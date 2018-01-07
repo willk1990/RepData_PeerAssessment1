@@ -1,0 +1,110 @@
+---
+title: "Week 2 Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the "quantified self" movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks.
+
+This assignment makes use of data from a personal activity monitoring device to answer questions about the subject's activity levels. Specificly, it uses data collected from an anonymous individual during the months of October and November, 2012 at 5 minute intervals through out the day to offer:
+
+1. A histogram of the total number of steps taken each day
+2. The mean and median number of steps taken each day
+3. A time series plot of the average number of steps taken
+4. The 5-minute interval that, on average, contains the maximum number of steps
+5. Calculate and report the number of missing values
+6. Code to describe and show a strategy for imputing missing data
+7. A histogram of the total number of steps taken each day after missing values are imputed; and
+8. A panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+## Code for Reading and Processing The Data
+
+
+```{r 1}
+activity <- read.csv("C:/Users/wk469/OneDrive/Documents/activity.csv")
+library(lubridate)
+activity$date <- ymd(activity$date)
+summary(activity)
+```
+
+## A Histogram of the Total Number of Steps Taken Each Day
+
+```{r 2}
+steps_date <- tapply(activity$steps,activity$date, FUN = sum, na.rm = TRUE)
+hist(steps_date, breaks = 10)
+```
+
+##The Mean and Median Number of Steps Taken Each Day
+
+```{r 3}
+mean <- mean(steps_date, na.rm = TRUE)
+median <-median(steps_date, na.rm = TRUE)
+vals <- c(mean,median)
+title <- c("mean","median")
+mmtable <- rbind(title,vals)
+print(mmtable)
+```
+
+##A time series plot of the average number of steps taken
+I use Taply to create a data frame which describes the average steps at each 5 minute time interval. 
+
+```{r 4}
+steps_time <- tapply(activity$steps,activity$interval, FUN = mean, na.rm = TRUE)
+ints <-  activity$interval[1:288]
+steps_time_f <- cbind(steps_time,ints)
+steps_time_f<- as.data.frame(steps_time_f)
+plot(steps_time_f$ints,steps_time_f$steps_time, type = "l", xlab = "5 Minute Interval", ylab = "Average # of Steps")
+```
+
+##The 5-minute interval that, on average, contains the maximum number of steps
+
+```{r 5}
+maxinter <- max(steps_time_f$steps_time)
+steptimesmax <- subset(steps_time_f, steps_time_f$steps_time== maxinter)
+print(steptimesmax)
+```
+
+##Code to estimate the # of missing values
+```{r 6}
+missingv <- sum(is.na(activity$steps))
+print(missingv)
+```
+
+##Code to describe and show a strategy for imputing missing data
+
+I use Transform to replace all N.A values in the Steps aray of the Activity data frame with the average steps over the relevant time interval. 
+
+```{r 7}
+activity_nar <- transform(activity, steps = ifelse(is.na(activity$steps), yes = steps_time_f$steps_time, no = activity$steps))
+summary(steps_time_f)
+```
+
+##A histogram of the total number of steps taken each day after missing values are imputed
+```{r 8}
+steps_time_fa <- tapply(activity_nar$steps,activity_nar$date, FUN = sum)
+hist(steps_time_fa, breaks =  10)
+```
+
+
+## A panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+I used the wday function from the lubridate library to add a weekday array to my transformed activity data frame. I then used that frame to create two new objects; an activity data frame for weekdays, and an activity data frame for weekends.
+I then used the Tapply function to create two new arrays describing the average steps for each time interval within the weekend and weekeday arrayS, and plotted both of those series. 
+
+
+```{r 9}
+activity_nar$wday <- wday(activity_nar$date)
+activity_nar_wend <- subset(activity_nar, wday == 1 | wday == 7)
+activity_nar_wday <- subset(activity_nar, wday != 1 & wday != 7)
+wday_steps_time <- tapply(activity_nar_wday$steps,activity_nar_wday$interval, FUN = mean, na.rm = TRUE)
+wend_steps_time <- tapply(activity_nar_wend$steps,activity_nar_wend$interval, FUN = mean, na.rm = TRUE)
+day_frame <- as.data.frame( cbind(wday_steps_time,wend_steps_time,ints))
+plot(day_frame$ints,day_frame$wday_steps_time, type = "l", col = "red")
+lines(day_frame$ints,day_frame$wend_steps_time, col = "blue")
+title(main = "Average Steps at Time Intervals")
+legend("topleft",c("weekdays","weekends"),fill =c("red","blue"))
+```
+
